@@ -78,7 +78,12 @@ class SshWorkspaceFs:
             raw = posixpath.join(self._env._remote_home, raw[2:])
         elif not raw.startswith("/"):
             raw = posixpath.join(self._env.cwd, raw)
-        return posixpath.normpath(raw)
+        # Folding ``..`` can expose a component's trailing whitespace ('/a/.env /x/..'); strip to a
+        # fixed point so normalize is idempotent and a path judged once is the path written.
+        path = posixpath.normpath(raw)
+        while (stripped := path.strip()) != path:
+            path = posixpath.normpath(stripped)
+        return path
 
     def _execute(self, command: str, *, stdin_data: str | None = None, timeout: int | None = None) -> dict:
         with self._lock:
